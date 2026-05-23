@@ -1,40 +1,92 @@
+import Ride from "../../models/Ride.model.js";
+import Driver from "../../models/Driver.model.js";
+
 /**
- * Booking socket events.
+ * Socket events — booking & ride lifecycle
  *
- * Customer emits:  booking:request   → server broadcasts to available drivers
- * Customer emits:  booking:cancel    → server notifies driver + cleans up room
- * Customer emits:  track:subscribe   → customer joins booking room to receive location
+ * Customer emits:  ride:request      → broadcast to available drivers
+ * Customer emits:  ride:cancel       → notify driver, cancel ride
+ * Customer emits:  ride:subscribe    → join ride room to track driver
  *
- * Driver emits:    booking:accept    → server notifies customer, creates ride room
- * Driver emits:    booking:reject    → server notifies customer
+ * Driver emits:    ride:accept       → notify customer, create Ride doc
+ * Driver emits:    ride:arriving     → notify customer driver is close
+ * Driver emits:    ride:start        → ride has begun
+ * Driver emits:    ride:complete     → ride finished
  */
 export const bookingHandler = (io, socket) => {
-  // Customer requests a ride
-  socket.on("booking:request", (data) => {
-    console.log("booking:request", data);
-    // Broadcast to all connected drivers
-    socket.broadcast.emit("booking:incoming", data);
+
+  // ── Customer requests a ride ────────────────────────
+  socket.on("ride:request", (data) => {
+    console.log("ride:request →", data);
+    socket.broadcast.emit("ride:incoming", data);
   });
 
-  // Driver accepts a booking
-  socket.on("booking:accept", (data) => {
-    const { bookingId, driverId } = data;
-    // Create a shared room for this booking (driver + customer join)
-    socket.join(`booking:${bookingId}`);
-    // Notify customer
-    io.to(`booking:${bookingId}`).emit("booking:accepted", { bookingId, driverId });
-    console.log(`Driver ${driverId} accepted booking ${bookingId}`);
+  // ── Customer joins ride room to receive location ────
+  socket.on("ride:subscribe", ({ rideId }) => {
+    socket.join(`ride:${rideId}`);
+    console.log(`Socket ${socket.id} subscribed to ride:${rideId}`);
   });
 
-  // Customer subscribes to a booking room (to receive location updates)
-  socket.on("track:subscribe", ({ bookingId }) => {
-    socket.join(`booking:${bookingId}`);
-    console.log(`Socket ${socket.id} subscribed to booking:${bookingId}`);
+  // ── Driver accepts ride ─────────────────────────────
+  socket.on("ride:accept", async ({ rideId, driverId }) => {
+    try {
+      const ride = await Ride.findByIdAndUpdate(
+        rideId,
+        { driver: driverId, status: "accepted" },
+        { new: true }
+      ).populate("customer driver");
+
+      socket.data.driverId = driverId;
+      socket.join(`ride:${rideId}`);
+
+      // Notify customer
+      io.to(`ride:${rideId}`).emit("ride:accepted", {
+        rideId,
+        driver: ride.driver,
+      });
+
+      // Mark driver as unavailable
+      await Driver.findByIdAndUpdate(driverId, { isAvailable: false });
+
+      console.log(`Driver ${driverId} accepted ride ${rideId}`);
+    } catch (error) {
+      console.error("ride:accept error:", error.message);
+    }
   });
 
-  // Customer cancels booking
-  socket.on("booking:cancel", ({ bookingId }) => {
-    io.to(`booking:${bookingId}`).emit("booking:cancelled", { bookingId });
-    socket.leave(`booking:${bookingId}`);
+  // ── Driver is arriving ──────────────────────────────
+  socket.on("ride:arriving", ({ rideId }) => {
+    io.to(`ride:${rideId}`).emit("ride:arriving", { rideId });
+  });
+
+  // ── Driver started the ride ─────────────────────────
+  socket.on("ride:start", async ({ rideId }) => {
+    await Ride.findByIdAndUpdate(rideId, { status: "started" });
+    io.to(`ride:${rideId}`).emit("ride:started", { rideId });
+  });
+
+  // ── Driver completed the ride ───────────────────────
+  socket.on("ride:complete", async ({ rideId }) => {
+    const ride = await Ride.findByIdAndUpdate(
+      rideId,
+      { status: "completed" },
+      { new: true }
+    );
+    await Driver.findByIdAndUpdate(ride.driver, {
+      isAvailable: true,
+      $inc: { totalRides: 1 },
+    });
+    io.to(`ride:${rideId}`).emit("ride:completed", { rideId });
+  });
+
+  // ── Customer cancels ride ───────────────────────────
+  socket.on("ride:cancel", async ({ rideId, reason }) => {
+    await Ride.findByIdAndUpdate(rideId, {
+      status:             "cancelled",
+      cancelledBy:        "customer",
+      cancellationReason: reason || null,
+    });
+    io.to(`ride:${rideId}`).emit("ride:cancelled", { rideId, by: "customer" });
+    socket.leave(`ride:${rideId}`);
   });
 };
