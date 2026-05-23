@@ -1,0 +1,122 @@
+{
+  "clientName": "Thunder Client",
+  "collectionName": "CabRide API",
+  "collectionId": "cabride-thunder-v1",
+  "dateExported": "2026-05-23",
+  "version": "1.1",
+  "folders": [
+    { "id": "folder-auth", "name": "Auth", "containerId": "" }
+  ],
+  "requests": [
+    {
+      "id": "req-health",
+      "colId": "cabride-thunder-v1",
+      "containerId": "",
+      "name": "Health Check",
+      "url": "http://localhost:4000/api/v1/health",
+      "method": "GET",
+      "headers": [],
+      "body": { "type": "none" }
+    },
+    {
+      "id": "req-register-customer",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Register — Customer",
+      "url": "http://localhost:4000/api/v1/auth/register",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"name\": \"John Customer\",\n  \"email\": \"customer@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"customer\",\n  \"phone\": \"+1234567890\"\n}"
+      }
+    },
+    {
+      "id": "req-register-driver",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Register — Driver",
+      "url": "http://localhost:4000/api/v1/auth/register",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"name\": \"Jane Driver\",\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"driver\",\n  \"phone\": \"+0987654321\"\n}"
+      }
+    },
+    {
+      "id": "req-login-customer",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Login — Customer",
+      "url": "http://localhost:4000/api/v1/auth/login",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"customer@test.com\",\n  \"password\": \"password123\"\n}"
+      }
+    },
+    {
+      "id": "req-login-driver",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Login — Driver",
+      "url": "http://localhost:4000/api/v1/auth/login",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\"\n}"
+      }
+    },
+    {
+      "id": "req-get-me",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Get Me (protected)",
+      "url": "http://localhost:4000/api/v1/auth/me",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer PASTE_TOKEN_HERE" }
+      ],
+      "body": { "type": "none" }
+    },
+    {
+      "id": "req-register-missing",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Register — Missing Fields (400 test)",
+      "url": "http://localhost:4000/api/v1/auth/register",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"incomplete@test.com\"\n}"
+      }
+    },
+    {
+      "id": "req-login-wrong",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Login — Wrong Password (401 test)",
+      "url": "http://localhost:4000/api/v1/auth/login",
+      "method": "POST",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"customer@test.com\",\n  \"password\": \"wrongpassword\"\n}"
+      }
+    },
+    {
+      "id": "req-me-no-token",
+      "colId": "cabride-thunder-v1",
+      "containerId": "folder-auth",
+      "name": "Get Me — No Token (401 test)",
+      "url": "http://localhost:4000/api/v1/auth/me",
+      "method": "GET",
+      "headers": [],
+      "body": { "type": "none" }
+    }
+  ]
+}

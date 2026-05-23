@@ -1,0 +1,177 @@
+{
+  "info": {
+    "name": "CabRide API",
+    "_postman_id": "cabride-api-v1",
+    "description": "CabRide backend API — Auth endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1" },
+    { "key": "token",   "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health",
+        "description": "Check if the server is running"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register — Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  console.log('Token saved:', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Customer\",\n  \"email\": \"customer@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"customer\",\n  \"phone\": \"+1234567890\"\n}"
+            },
+            "description": "Register a new customer account"
+          }
+        },
+        {
+          "name": "Register — Driver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Driver\",\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"driver\",\n  \"phone\": \"+0987654321\"\n}"
+            },
+            "description": "Register a new driver account — auto-creates Driver profile"
+          }
+        },
+        {
+          "name": "Login — Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  console.log('Token saved!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@test.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "description": "Login — token is auto-saved to collection variable"
+          }
+        },
+        {
+          "name": "Login — Driver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Me (protected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Get current logged-in user — requires Bearer token"
+          }
+        },
+        {
+          "name": "Register — Missing Fields (400 test)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"incomplete@test.com\"\n}"
+            },
+            "description": "Should return 400 — missing name, password, role"
+          }
+        },
+        {
+          "name": "Login — Wrong Password (401 test)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@test.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "description": "Should return 401 — invalid credentials"
+          }
+        },
+        {
+          "name": "Get Me — No Token (401 test)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "description": "Should return 401 — no token provided"
+          }
+        }
+      ]
+    }
+  ]
+}
