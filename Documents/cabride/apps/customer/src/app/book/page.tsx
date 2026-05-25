@@ -11,19 +11,19 @@ import { Location } from "@/types";
 import { formatCurrency } from "@/utils";
 
 const LOCATIONS: Location[] = [
-  { address: "Gateway of India, Mumbai",        latitude: 18.9220, longitude: 72.8347 },
-  { address: "Bandra Kurla Complex, Mumbai",    latitude: 19.0596, longitude: 72.8656 },
-  { address: "Juhu Beach, Mumbai",              latitude: 19.0883, longitude: 72.8264 },
-  { address: "Chhatrapati Shivaji Terminal",    latitude: 18.9398, longitude: 72.8355 },
-  { address: "Powai Lake, Mumbai",              latitude: 19.1197, longitude: 72.9051 },
-  { address: "Andheri West, Mumbai",            latitude: 19.1307, longitude: 72.8297 },
-  { address: "Dadar Station, Mumbai",           latitude: 19.0178, longitude: 72.8478 },
-  { address: "Navi Mumbai, Vashi",              latitude: 19.0771, longitude: 73.0007 },
+  { address: "Itanagar, Arunachal Pradesh",       latitude: 27.0844, longitude: 93.6053 },
+  { address: "Naharlagun, Arunachal Pradesh",     latitude: 27.1045, longitude: 93.6955 },
+  { address: "Pasighat, Arunachal Pradesh",       latitude: 28.0664, longitude: 95.3269 },
+  { address: "Ziro, Arunachal Pradesh",           latitude: 27.5903, longitude: 93.8303 },
+  { address: "Bomdila, Arunachal Pradesh",        latitude: 27.2645, longitude: 92.4159 },
+  { address: "Tawang, Arunachal Pradesh",         latitude: 27.5861, longitude: 91.8594 },
+  { address: "Roing, Arunachal Pradesh",          latitude: 28.1420, longitude: 95.8350 },
+  { address: "Tezu, Arunachal Pradesh",           latitude: 27.9219, longitude: 96.1697 },
 ];
 
 function calcFare(p: Location, d: Location) {
   const dist = Math.sqrt((d.latitude-p.latitude)**2 + (d.longitude-p.longitude)**2) * 111;
-  return Math.max(50, Math.round(dist * 18 * 100) / 100); // ₹18/km base rate
+  return Math.max(50, Math.round((50 + dist * 18) * 100) / 100);
 }
 
 function LocationRow({ loc, onSelect }: { loc: Location; onSelect: () => void }) {
@@ -65,8 +65,10 @@ export default function BookPage() {
     if (!pickup || !dropoff) return;
     try {
       const ride = await requestRide(pickup, dropoff);
-      emit("ride:request", { rideId: ride._id, pickup: ride.pickup, dropoff: ride.dropoff, fare: ride.fare });
-      router.push(`/track/${ride._id}`);
+      if (ride) {
+        emit("ride:request", { rideId: ride._id, pickup: ride.pickup, dropoff: ride.dropoff, fare: ride.fare });
+        router.push(`/track/${ride._id}`);
+      }
     } catch {}
   };
 
@@ -79,10 +81,9 @@ export default function BookPage() {
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-white">Book a Ride</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Select your pickup and dropoff in Mumbai</p>
+          <p className="text-sm text-gray-500 mt-0.5">Select pickup and dropoff in Arunachal Pradesh</p>
         </div>
 
-        {/* Selected route summary */}
         {(pickup || dropoff) && (
           <Card padding="none" className="mb-4">
             <div className="px-4 py-3 flex items-start gap-3">
@@ -131,7 +132,6 @@ export default function BookPage() {
           })}
         </div>
 
-        {/* Confirm view */}
         {step === "confirm" && pickup && dropoff ? (
           <div className="space-y-3">
             <Card padding="md">
@@ -139,11 +139,11 @@ export default function BookPage() {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">From</span>
-                  <span className="text-white font-medium text-right max-w-[60%]">{pickup.address}</span>
+                  <span className="text-white font-medium text-right max-w-[60%] truncate">{pickup.address}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">To</span>
-                  <span className="text-white font-medium text-right max-w-[60%]">{dropoff.address}</span>
+                  <span className="text-white font-medium text-right max-w-[60%] truncate">{dropoff.address}</span>
                 </div>
                 <div className="border-t border-[#252525] pt-3 flex justify-between">
                   <span className="text-gray-500 text-sm">Estimated fare</span>
