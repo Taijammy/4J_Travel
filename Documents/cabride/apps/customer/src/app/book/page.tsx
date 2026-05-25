@@ -11,17 +11,19 @@ import { Location } from "@/types";
 import { formatCurrency } from "@/utils";
 
 const LOCATIONS: Location[] = [
-  { address: "Central Park, New York",    latitude: 40.7851, longitude: -73.9683 },
-  { address: "Times Square, New York",    latitude: 40.7580, longitude: -73.9855 },
-  { address: "Brooklyn Bridge, New York", latitude: 40.7061, longitude: -73.9969 },
-  { address: "JFK Airport, New York",     latitude: 40.6413, longitude: -73.7781 },
-  { address: "Grand Central Terminal",    latitude: 40.7527, longitude: -73.9772 },
-  { address: "Statue of Liberty",         latitude: 40.6892, longitude: -74.0445 },
+  { address: "Gateway of India, Mumbai",        latitude: 18.9220, longitude: 72.8347 },
+  { address: "Bandra Kurla Complex, Mumbai",    latitude: 19.0596, longitude: 72.8656 },
+  { address: "Juhu Beach, Mumbai",              latitude: 19.0883, longitude: 72.8264 },
+  { address: "Chhatrapati Shivaji Terminal",    latitude: 18.9398, longitude: 72.8355 },
+  { address: "Powai Lake, Mumbai",              latitude: 19.1197, longitude: 72.9051 },
+  { address: "Andheri West, Mumbai",            latitude: 19.1307, longitude: 72.8297 },
+  { address: "Dadar Station, Mumbai",           latitude: 19.0178, longitude: 72.8478 },
+  { address: "Navi Mumbai, Vashi",              latitude: 19.0771, longitude: 73.0007 },
 ];
 
 function calcFare(p: Location, d: Location) {
   const dist = Math.sqrt((d.latitude-p.latitude)**2 + (d.longitude-p.longitude)**2) * 111;
-  return Math.max(5, Math.round(dist * 2.5 * 100) / 100);
+  return Math.max(50, Math.round(dist * 18 * 100) / 100); // ₹18/km base rate
 }
 
 function LocationRow({ loc, onSelect }: { loc: Location; onSelect: () => void }) {
@@ -34,7 +36,7 @@ function LocationRow({ loc, onSelect }: { loc: Location; onSelect: () => void })
           {loc.address}
         </p>
         <p className="text-xs text-gray-600 font-mono mt-0.5">
-          {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+          {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
         </p>
       </div>
       <span className="text-gray-600 group-hover:text-yellow-400 transition-colors shrink-0">›</span>
@@ -75,10 +77,9 @@ export default function BookPage() {
       <Navbar />
       <div className="max-w-lg mx-auto px-4 pt-6">
 
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-bold text-white">Book a Ride</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Select your pickup and dropoff</p>
+          <p className="text-sm text-gray-500 mt-0.5">Select your pickup and dropoff in Mumbai</p>
         </div>
 
         {/* Selected route summary */}
@@ -146,7 +147,11 @@ export default function BookPage() {
                 </div>
                 <div className="border-t border-[#252525] pt-3 flex justify-between">
                   <span className="text-gray-500 text-sm">Estimated fare</span>
-                  <span className="text-yellow-400 font-bold">{formatCurrency(fare!)}</span>
+                  <span className="text-yellow-400 font-bold text-lg">{formatCurrency(fare!)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Payment</span>
+                  <span className="text-white">Cash</span>
                 </div>
               </div>
             </Card>

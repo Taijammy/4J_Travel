@@ -12,7 +12,16 @@ import { formatCurrency } from "@/utils";
 
 const RideMap = dynamic(() => import("@/components/map/RideMap"), { ssr: false });
 
-const STEPS = ["requested","accepted","arriving","started","completed"];
+const STEPS = ["requested", "accepted", "arriving", "started", "completed"];
+
+const STATUS_MESSAGES: Record<string, string> = {
+  requested:  "Looking for a driver...",
+  accepted:   "Driver accepted your ride!",
+  arriving:   "Driver is arriving at pickup!",
+  started:    "You're on your way!",
+  completed:  "Ride completed! 🎉",
+  cancelled:  "Ride was cancelled",
+};
 
 export default function TrackPage() {
   const { rideId }  = useParams<{ rideId: string }>();
@@ -21,19 +30,54 @@ export default function TrackPage() {
   const driverLoc   = useDriverLocation(rideId, user?.id ?? null);
   const router      = useRouter();
   const [driver, setDriver] = useState<any>(null);
+  const socketRef = useState<any>(null);
 
   useEffect(() => { if (rideId) fetchActiveRide(); }, [rideId]);
 
+  // Setup socket and join ride room
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !rideId) return;
+
     const socket = getSocket(user.id);
-    socket.on("ride:accepted",  (d: any) => { setDriver(d.driver); setRide((p:any) => p ? {...p, status:"accepted"}  : p); });
-    socket.on("ride:arriving",  ()       => setRide((p:any) => p ? {...p, status:"arriving"}  : p));
-    socket.on("ride:started",   ()       => setRide((p:any) => p ? {...p, status:"started"}   : p));
-    socket.on("ride:completed", ()       => setRide((p:any) => p ? {...p, status:"completed"} : p));
-    socket.on("ride:cancelled", ()       => setRide((p:any) => p ? {...p, status:"cancelled"} : p));
-    return () => { ["ride:accepted","ride:arriving","ride:started","ride:completed","ride:cancelled"].forEach(e => socket.off(e)); };
-  }, [user?.id]);
+
+    // Join the ride room so we receive events
+    socket.emit("ride:subscribe", { rideId });
+    console.log("📡 Customer subscribed to ride:", rideId);
+
+    socket.on("ride:accepted", (data: any) => {
+      console.log("✅ ride:accepted", data);
+      setDriver(data.driver);
+      setRide((p: any) => p ? { ...p, status: "accepted" } : p);
+    });
+
+    socket.on("ride:arriving", () => {
+      console.log("✅ ride:arriving");
+      setRide((p: any) => p ? { ...p, status: "arriving" } : p);
+    });
+
+    socket.on("ride:started", () => {
+      console.log("✅ ride:started");
+      setRide((p: any) => p ? { ...p, status: "started" } : p);
+    });
+
+    socket.on("ride:completed", () => {
+      console.log("✅ ride:completed");
+      setRide((p: any) => p ? { ...p, status: "completed" } : p);
+    });
+
+    socket.on("ride:cancelled", () => {
+      console.log("✅ ride:cancelled");
+      setRide((p: any) => p ? { ...p, status: "cancelled" } : p);
+    });
+
+    return () => {
+      socket.off("ride:accepted");
+      socket.off("ride:arriving");
+      socket.off("ride:started");
+      socket.off("ride:completed");
+      socket.off("ride:cancelled");
+    };
+  }, [user?.id, rideId]);
 
   if (!ride) return (
     <div className="flex h-screen items-center justify-center bg-[#0f0f0f]">
@@ -41,9 +85,9 @@ export default function TrackPage() {
     </div>
   );
 
-  const isDone    = ["completed","cancelled"].includes(ride.status);
+  const isDone    = ["completed", "cancelled"].includes(ride.status);
   const stepIdx   = STEPS.indexOf(ride.status);
-  const canCancel = ["requested","accepted"].includes(ride.status);
+  const canCancel = ["requested", "accepted"].includes(ride.status);
 
   return (
     <div className="h-screen bg-[#0f0f0f] flex flex-col">
@@ -56,35 +100,48 @@ export default function TrackPage() {
           className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-2 bg-[#0f0f0f]/90 backdrop-blur-sm border border-[#1e1e1e] rounded-xl text-sm font-medium text-white hover:bg-[#1e1e1e] transition-colors">
           ← Back
         </button>
+
+        {/* Live status floating badge */}
+        <div className="absolute top-4 right-4 z-10 px-3 py-2 bg-[#0f0f0f]/90 backdrop-blur-sm border border-[#1e1e1e] rounded-xl">
+          <Badge status={ride.status} />
+        </div>
       </div>
 
       {/* Bottom sheet */}
       <div className="bg-[#0f0f0f] border-t border-[#1e1e1e] rounded-t-2xl overflow-y-auto"
-        style={{ maxHeight:"50vh" }}>
+        style={{ maxHeight: "55vh" }}>
 
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-8 h-1 rounded-full bg-[#2a2a2a]" />
         </div>
 
-        <div className="px-4 pb-6 pt-3 space-y-4">
-          {/* Status row */}
-          <div className="flex items-center justify-between">
-            <Badge status={ride.status} />
-            <span className="text-xs text-gray-600 font-mono">#{rideId?.slice(-8).toUpperCase()}</span>
+        <div className="px-4 pb-6 pt-2 space-y-4">
+
+          {/* Status message */}
+          <div className={`px-4 py-3 rounded-xl border text-sm font-medium
+            ${ride.status === "completed" ? "bg-green-500/10 border-green-500/20 text-green-400"
+            : ride.status === "cancelled" ? "bg-red-500/10 border-red-500/20 text-red-400"
+            : "bg-yellow-400/10 border-yellow-400/20 text-yellow-400"}`}>
+            {STATUS_MESSAGES[ride.status]}
           </div>
 
           {/* Progress bar */}
           {!isDone && (
             <div>
+              <div className="flex justify-between text-[11px] text-gray-600 mb-1.5">
+                {STEPS.slice(0, -1).map((s, i) => (
+                  <span key={s} className={i <= stepIdx ? "text-yellow-400" : ""}>{s}</span>
+                ))}
+              </div>
               <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
                 <div className="h-full bg-yellow-400 rounded-full transition-all duration-700"
-                  style={{ width:`${Math.max(10,(stepIdx/(STEPS.length-2))*100)}%` }} />
+                  style={{ width: `${Math.max(5, (stepIdx / (STEPS.length - 2)) * 100)}%` }} />
               </div>
             </div>
           )}
 
-          {/* Driver card */}
+          {/* Driver card — shown after acceptance */}
           {driver && (
             <div className="flex items-center gap-3 bg-[#1a1a1a] border border-[#252525] rounded-xl p-3">
               <div className="w-10 h-10 rounded-full bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center text-yellow-400 font-bold shrink-0">
@@ -98,14 +155,14 @@ export default function TrackPage() {
               </div>
               <div className="text-right shrink-0 space-y-1">
                 <p className="text-xs text-yellow-400 font-semibold">★ {driver.rating?.toFixed(1)}</p>
-                <a href={`tel:${driver.phone}`} className="text-xs text-gray-500 hover:text-yellow-400 block transition-colors">
-                  Call
-                </a>
+                {driver.phone && (
+                  <a href={`tel:${driver.phone}`} className="text-xs text-gray-500 hover:text-yellow-400 block transition-colors">Call</a>
+                )}
               </div>
             </div>
           )}
 
-          {/* Route */}
+          {/* Route summary */}
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-center gap-1 pt-1.5">
               <div className="w-2.5 h-2.5 rounded-full border-2 border-green-400" />
@@ -124,13 +181,20 @@ export default function TrackPage() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-[11px] text-gray-500">Fare</p>
-              <p className="text-base font-bold text-yellow-400">{formatCurrency(ride.fare?.estimated||0)}</p>
+              <p className="text-base font-bold text-yellow-400">{formatCurrency(ride.fare?.estimated || 0)}</p>
             </div>
           </div>
 
+          {/* Ride ID */}
+          <p className="text-[11px] text-gray-600 font-mono text-center">
+            Ride #{rideId?.slice(-8).toUpperCase()}
+          </p>
+
           {/* CTA */}
           {isDone ? (
-            <Button full size="lg" onClick={() => router.push("/dashboard")}>Back to Home</Button>
+            <Button full size="lg" onClick={() => router.push("/dashboard")}>
+              Back to Home
+            </Button>
           ) : canCancel && (
             <Button full size="lg" variant="danger" onClick={() => cancelRide("Customer cancelled")}>
               Cancel Ride

@@ -5,19 +5,19 @@ export const formatTime = (date: string) =>
   new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" }).format(new Date(date));
 
 export const STATUS_LABELS: Record<string, string> = {
-  requested:  "Finding your driver...",
-  accepted:   "Driver accepted!",
-  arriving:   "Driver is arriving!",
-  started:    "On the way!",
-  completed:  "Ride completed",
-  cancelled:  "Ride cancelled",
+  requested:  "New Request",
+  accepted:   "Accepted",
+  arriving:   "Arriving",
+  started:    "In Progress",
+  completed:  "Completed",
+  cancelled:  "Cancelled",
 };
 
 export const STATUS_COLORS: Record<string, string> = {
   requested:  "text-yellow-400",
   accepted:   "text-blue-400",
   arriving:   "text-orange-400",
-  started:    "text-emerald-400",
+  started:    "text-green-400",
   completed:  "text-emerald-400",
   cancelled:  "text-red-400",
 };
