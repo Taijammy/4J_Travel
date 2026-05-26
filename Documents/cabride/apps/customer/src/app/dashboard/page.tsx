@@ -1,35 +1,30 @@
 "use client";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import ProtectedRoute from "@/components/ui/ProtectedRoute";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useRide } from "@/hooks/useRide";
 import { formatCurrency } from "@/utils";
 
-export default function Dashboard() {
+function DashboardContent() {
   const { user, loading } = useAuth();
   const { ride, fetchActiveRide, cancelRide } = useRide();
-  const router = useRouter();
 
-  useEffect(() => { if (!loading && !user) router.replace("/auth"); }, [user, loading]);
   useEffect(() => { fetchActiveRide(); }, []);
 
-  if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#0f0f0f]">
-      <span className="spinner" />
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
   const hasActive = ride && !["completed", "cancelled"].includes(ride.status);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] pb-20 md:pb-8 md:pt-14">
       <Navbar />
-
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
 
         {/* Greeting */}
@@ -38,8 +33,8 @@ export default function Dashboard() {
           <h1 className="text-xl font-bold text-white">{user?.name || "Traveller"}</h1>
         </div>
 
-        {/* Book a ride CTA — shown when no active ride */}
-        {!hasActive && (
+        {/* Book CTA or Active ride */}
+        {!hasActive ? (
           <Card padding="none" className="overflow-hidden">
             <div className="bg-yellow-400 px-5 py-6">
               <p className="text-black/60 text-xs font-medium uppercase tracking-wider mb-1">Ready to go?</p>
@@ -52,24 +47,18 @@ export default function Dashboard() {
               </Link>
             </div>
           </Card>
-        )}
-
-        {/* Active ride card */}
-        {hasActive && (
+        ) : (
           <Card padding="none">
-            {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-[#252525]">
               <span className="text-sm font-semibold text-white">Active Ride</span>
               <Badge status={ride!.status} />
             </div>
-
-            {/* Route */}
             <div className="px-5 py-4 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="mt-1 flex flex-col items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full border-2 border-green-400 bg-transparent" />
+                  <div className="w-2.5 h-2.5 rounded-full border-2 border-green-400" />
                   <div className="w-px h-5 bg-[#2a2a2a]" />
-                  <div className="w-2.5 h-2.5 rounded-full border-2 border-yellow-400 bg-transparent" />
+                  <div className="w-2.5 h-2.5 rounded-full border-2 border-yellow-400" />
                 </div>
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
@@ -87,16 +76,12 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-
-            {/* Actions */}
             <div className="flex gap-2 px-5 pb-4">
               <Link href={`/track/${ride!._id}`} className="flex-1">
                 <Button full>Track Ride →</Button>
               </Link>
-              {["requested","accepted"].includes(ride!.status) && (
-                <Button variant="danger" onClick={() => cancelRide("Customer cancelled")}>
-                  Cancel
-                </Button>
+              {["requested", "accepted"].includes(ride!.status) && (
+                <Button variant="danger" onClick={() => cancelRide("Customer cancelled")}>Cancel</Button>
               )}
             </div>
           </Card>
@@ -137,5 +122,15 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <ErrorBoundary>
+        <DashboardContent />
+      </ErrorBoundary>
+    </ProtectedRoute>
   );
 }
