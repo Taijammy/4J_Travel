@@ -1,13 +1,15 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import ProtectedRoute from "@/components/ui/ProtectedRoute";
-import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRide } from "@/hooks/useRide";
 import { formatCurrency } from "@/utils";
@@ -15,33 +17,41 @@ import { formatCurrency } from "@/utils";
 function DashboardContent() {
   const { user, loading } = useAuth();
   const { ride, fetchActiveRide, cancelRide } = useRide();
+  const { showToast } = useToast();
+  const router = useRouter();
 
   useEffect(() => { fetchActiveRide(); }, []);
 
+  const handleCancel = async () => {
+    try {
+      await cancelRide("Customer cancelled");
+      showToast("Ride cancelled", "warning");
+    } catch {
+      showToast("Failed to cancel ride", "error");
+    }
+  };
+
   if (loading) return <DashboardSkeleton />;
 
-  const hasActive = ride && !["completed", "cancelled"].includes(ride.status);
+  const hasActive = ride && !["completed","cancelled"].includes(ride.status);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] pb-20 md:pb-8 md:pt-14">
       <Navbar />
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
 
-        {/* Greeting */}
         <div className="mb-2">
           <p className="text-gray-500 text-sm">Good day,</p>
           <h1 className="text-xl font-bold text-white">{user?.name || "Traveller"}</h1>
         </div>
 
-        {/* Book CTA or Active ride */}
         {!hasActive ? (
           <Card padding="none" className="overflow-hidden">
             <div className="bg-yellow-400 px-5 py-6">
               <p className="text-black/60 text-xs font-medium uppercase tracking-wider mb-1">Ready to go?</p>
               <h2 className="text-black text-xl font-bold mb-4">Where are you going?</h2>
               <Link href="/book">
-                <Button variant="primary" full size="lg"
-                  className="!bg-black !text-white hover:!bg-gray-900">
+                <Button variant="primary" full size="lg" className="!bg-black !text-white hover:!bg-gray-900">
                   🚖 Book a Ride
                 </Button>
               </Link>
@@ -80,14 +90,13 @@ function DashboardContent() {
               <Link href={`/track/${ride!._id}`} className="flex-1">
                 <Button full>Track Ride →</Button>
               </Link>
-              {["requested", "accepted"].includes(ride!.status) && (
-                <Button variant="danger" onClick={() => cancelRide("Customer cancelled")}>Cancel</Button>
+              {["requested","accepted"].includes(ride!.status) && (
+                <Button variant="danger" onClick={handleCancel}>Cancel</Button>
               )}
             </div>
           </Card>
         )}
 
-        {/* Quick links */}
         <div className="grid grid-cols-2 gap-3">
           <Link href="/book">
             <Card className="hover:border-yellow-400/30 transition-colors cursor-pointer !p-4">
@@ -105,7 +114,6 @@ function DashboardContent() {
           </Link>
         </div>
 
-        {/* User info */}
         <Card padding="sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-yellow-400/10 flex items-center justify-center text-yellow-400 font-bold shrink-0">
