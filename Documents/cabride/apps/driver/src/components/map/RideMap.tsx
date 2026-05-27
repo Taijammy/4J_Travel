@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -26,6 +26,24 @@ const cabIcon = L.divIcon({
   iconSize: [36,36], iconAnchor: [18,18], popupAnchor: [0,-20],
 });
 
+// ── OSRM road routing ─────────────────────────────────
+async function fetchOSRMRoute(
+  from: { latitude: number; longitude: number },
+  to:   { latitude: number; longitude: number }
+): Promise<[number,number][]> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/` +
+      `${from.longitude},${from.latitude};${to.longitude},${to.latitude}` +
+      `?overview=full&geometries=geojson`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.code !== "Ok" || !data.routes?.[0]) return [];
+    return data.routes[0].geometry.coordinates.map(
+      ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
+    );
+  } catch { return []; }
+}
+
 function BoundsFitter({ points }: { points: [number,number][] }) {
   const map    = useMap();
   const fitted = useRef(false);
@@ -38,6 +56,45 @@ function BoundsFitter({ points }: { points: [number,number][] }) {
   return null;
 }
 
+function OSRMRoute({ from, to, driver }: {
+  from:   { latitude: number; longitude: number };
+  to:     { latitude: number; longitude: number };
+  driver: { latitude: number; longitude: number } | null;
+}) {
+  const [fullRoute,   setFullRoute]   = useState<[number,number][]>([]);
+  const [driverRoute, setDriverRoute] = useState<[number,number][]>([]);
+
+  useEffect(() => {
+    fetchOSRMRoute(from, to).then(coords => {
+      setFullRoute(coords.length > 0
+        ? coords
+        : [[from.latitude,from.longitude],[to.latitude,to.longitude]]);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!driver) return;
+    fetchOSRMRoute(driver, from).then(coords => {
+      setDriverRoute(coords.length > 0
+        ? coords
+        : [[driver.latitude,driver.longitude],[from.latitude,from.longitude]]);
+    });
+  }, [driver?.latitude, driver?.longitude]);
+
+  return (
+    <>
+      {fullRoute.length > 1 && (
+        <Polyline positions={fullRoute}
+          pathOptions={{ color:"#FACC15", weight:4, opacity:0.25 }} />
+      )}
+      {driver && driverRoute.length > 1 && (
+        <Polyline positions={driverRoute}
+          pathOptions={{ color:"#FACC15", weight:4, opacity:0.9, dashArray:"10 6" }} />
+      )}
+    </>
+  );
+}
+
 interface Props {
   pickup:         { address: string; latitude: number; longitude: number };
   dropoff:        { address: string; latitude: number; longitude: number };
@@ -46,7 +103,7 @@ interface Props {
 
 export default function RideMap({ pickup, dropoff, driverLocation }: Props) {
   const points: [number,number][] = [
-    [pickup.latitude,  pickup.longitude],
+    [pickup.latitude, pickup.longitude],
     [dropoff.latitude, dropoff.longitude],
   ];
 
@@ -59,10 +116,8 @@ export default function RideMap({ pickup, dropoff, driverLocation }: Props) {
         .leaflet-container { background: #0f0f0f !important; }
         .leaflet-control-attribution { display: none !important; }
         .leaflet-popup-content-wrapper {
-          background: #1a1a1a !important;
-          border: 1px solid #252525 !important;
-          color: #f5f5f5 !important;
-          border-radius: 12px !important;
+          background: #1a1a1a !important; border: 1px solid #252525 !important;
+          color: #f5f5f5 !important; border-radius: 12px !important;
           box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
         }
         .leaflet-popup-tip { background: #1a1a1a !important; }
@@ -73,19 +128,24 @@ export default function RideMap({ pickup, dropoff, driverLocation }: Props) {
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" />
         <BoundsFitter points={points} />
 
-        <Polyline positions={points}
-          pathOptions={{ color:"#FACC15", weight:3, opacity:0.8, dashArray:"8 6" }} />
+        <OSRMRoute from={pickup} to={dropoff} driver={driverLocation} />
 
-        <Marker position={[pickup.latitude,  pickup.longitude]}  icon={pickupIcon}>
-          <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}><strong style={{color:"#4ade80"}}>📍 Pickup</strong><br/>{pickup.address}</div></Popup>
+        <Marker position={[pickup.latitude, pickup.longitude]} icon={pickupIcon}>
+          <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}>
+            <strong style={{color:"#4ade80"}}>📍 Pickup</strong><br/>{pickup.address}
+          </div></Popup>
         </Marker>
         <Marker position={[dropoff.latitude, dropoff.longitude]} icon={dropoffIcon}>
-          <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}><strong style={{color:"#fb923c"}}>🎯 Dropoff</strong><br/>{dropoff.address}</div></Popup>
+          <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}>
+            <strong style={{color:"#fb923c"}}>🎯 Dropoff</strong><br/>{dropoff.address}
+          </div></Popup>
         </Marker>
 
         {driverLocation && (
           <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={cabIcon}>
-            <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}><strong style={{color:"#facc15"}}>🚖 You</strong></div></Popup>
+            <Popup><div style={{fontFamily:"Inter",fontSize:12,color:"#f5f5f5"}}>
+              <strong style={{color:"#facc15"}}>🚖 You</strong>
+            </div></Popup>
           </Marker>
         )}
       </MapContainer>
